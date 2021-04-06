@@ -46,7 +46,7 @@ public class UnityDifferentialBaseSimulation : MonoBehaviour {
   /// The maximal motorTorque apply to the driving wheels.
   /// This determines the maximum acceleration.
   /// </summary>
-  public float maxMotorTorque = 10.0f;
+  public float maxMotorTorque = 100.0f;
 
   /// <summary>
   /// Whether to use a proportional driver (true) or always apply maxMotorTorque (false)
@@ -56,7 +56,7 @@ public class UnityDifferentialBaseSimulation : MonoBehaviour {
   /// <summary>
   /// Proportional controller gain
   /// </summary>
-  public float proportionalGain = 100.0f;
+  public float proportionalGain = 200.0f;
 
   /// <summary>
   /// The two driving wheels of carter.
