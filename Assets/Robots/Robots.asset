@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e7030210e2f4cea3a197ec7cff05a51, type: 3}
+  m_Name: Robots
+  m_EditorClassIdentifier: 
+  children:
+  - {fileID: 11400000, guid: 0896c9c6e7cf55e11ba63c6f16c4e93d, type: 2}
+  templates:
+  - {fileID: 3606991288828718594, guid: 1677d114278b62819821ec6e7edee081, type: 3}
+  - {fileID: 5727680122141065384, guid: f74a1a5ac8fe5baec8ae67e20c28ce98, type: 3}
+  - {fileID: 7433813197264014348, guid: d2ffd3c23ad922d4aaf1951d49276f9a, type: 3}
+  - {fileID: 8638165735662873703, guid: f0918cb1f4a5c0b76919147c0c1a0826, type: 3}
+  - {fileID: 3606991288828718594, guid: a534021d0231a5709b126657517a0451, type: 3}
+  - {fileID: 3923733496872317012, guid: 1419475a15124c83bb71c4f9dea753c1, type: 3}
+  - {fileID: 3923733496872317012, guid: 9b82e955715a8b93c9c292297285cc54, type: 3}
+  - {fileID: 1147014178919028685, guid: 1e1a8ef4a17c4611ca8cd69dc50db411, type: 3}
