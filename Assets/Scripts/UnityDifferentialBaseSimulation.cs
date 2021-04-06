@@ -1,4 +1,5 @@
-﻿/*
+﻿
+/*
 Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
 
 NVIDIA CORPORATION and its licensors retain all intellectual property
@@ -84,8 +85,7 @@ public class UnityDifferentialBaseSimulation : MonoBehaviour {
   /// value the more smoothing will be applied. If set to 0 smoothing will not be used.
   /// </summary>
   public float accelerationSmoothing = 1f;
-
-
+  
   // stored latest measured speed for calculating acceleration
   Vector2 commandedSpeed;
   float lastCommandTime;
@@ -120,44 +120,80 @@ public class UnityDifferentialBaseSimulation : MonoBehaviour {
       wheel.steerAngle = 90;
     }
 
-    // shift rigidbody center of mass
+
+// shift rigidbody center of mass
     body.centerOfMass += centerOfMassShift;
-    wheelFL.motorTorque = 5;
-    wheelFR.motorTorque = 10;
+    // wheelFL.motorTorque = 5;
+    // wheelFR.motorTorque = 5;
   }
 
   void Update() {
     
     // getWheelDesireSpeed(commandedSpeed);
+    float theta_new, k_v, k_h;
+
+    var point_to = GameObject.Find("Cube").transform.position;
+
+    k_v = 0.5f;
+    k_h = 4.0f;
+
+    var point_local = body.transform.InverseTransformPoint(point_to);
+    //
+    Debug.Log($"Local point {point_local}");
+    //
+    //
+    var linear_velocity = (float) (k_v * Math.Sqrt(Math.Pow(point_local.x, 2) + Math.Pow(point_local.z, 2)));
+    // //
+    // // 3rd quater
+    if (point_local.x < 0 && point_local.z < 0)
+    {
+      theta_new = (float) ((Math.Atan(point_local.z / point_local.x)) - Math.PI);
+    }
+    else if (point_local.x < 0)
+    {
+      theta_new = (float) ((Math.Atan(point_local.z / point_local.x)) + Math.PI);
+    }
+    else
+    {
+      theta_new = (float) (Math.Atan(point_local.z / point_local.x));
+    }
+
+    //
+    // // theta_new = (float)(Math.Atan((point_to.y-body.transform.position.y) / (point_to.x-body.transform.position.x)));
+    // Debug.Log($"Angle {theta_new}");
+    // //
+    var angular_velocity = k_h * theta_new;
+    // //
+    //
+    commandedSpeed = Limit(new Vector2((float) linear_velocity, (float) angular_velocity), maximumSpeed);
+    //
+    Debug.Log($"Commanded speed: {commandedSpeed}");
+    // Vector3 vecForward = body.rotation * Vector3.right;
+    // Vector2 measuredSpeed = new Vector2(Vector3.Dot(body.velocity, vecForward), -body.angularVelocity.y);
+    // //   
+    // Debug.Log($"BodyLin:{measuredSpeed[0]}");
+    // Debug.Log($"BodyAng:{measuredSpeed[1]}");
+    getWheelDesireSpeed(commandedSpeed);
     
   }
 
   void FixedUpdate() {
-    
-    // if (brakeRequested) {
-    //   wheelFL.brakeTorque = brakeTorque;
-    //   wheelFR.brakeTorque = brakeTorque;
-    //   wheelFL.motorTorque = 0.0f;
-    //   wheelFR.motorTorque = 0.0f;
-    // } else {
-    //   // get wheel current speed from rpm
-    //   wheelCurrentSpeed[0] = AngularSpeedRpmToRad(wheelFL.rpm) * wheelFL.radius;
-    //   wheelCurrentSpeed[1] = AngularSpeedRpmToRad(wheelFR.rpm) * wheelFR.radius;
-    //
-    //   // calculate Torque to apply based on the current speed and the desired speed from the last command
-    //   wheelFL.motorTorque = getTorque(wheelCurrentSpeed[0], wheelDesiredSpeed[0]);
-    //   wheelFR.motorTorque = getTorque(wheelCurrentSpeed[1], wheelDesiredSpeed[1]);
-    //   wheelFL.brakeTorque = 0.0f;
-    //   wheelFR.brakeTorque = 0.0f;
-    // }
-    //
-    // // measure current speed and acceleration
-    // Vector3 vecForward = body.rotation * Vector3.right;
-    // Vector2 measuredSpeed = new Vector2(Vector3.Dot(body.velocity, vecForward), -body.angularVelocity.y);
-    // Vector2 measuredAcceleration = (measuredSpeed - lastSpeed) / Time.deltaTime;
-    // lastAcceleration += TimedSmoothingFactor(Time.deltaTime, accelerationSmoothing)
-    //     * (measuredAcceleration - lastAcceleration);
+    if (brakeRequested) {
+      wheelFL.brakeTorque = brakeTorque;
+      wheelFR.brakeTorque = brakeTorque;
+      wheelFL.motorTorque = 0.0f;
+      wheelFR.motorTorque = 0.0f;
+    } else {
+      // get wheel current speed from rpm
+      wheelCurrentSpeed[0] = AngularSpeedRpmToRad(wheelFL.rpm) * wheelFL.radius;
+      wheelCurrentSpeed[1] = AngularSpeedRpmToRad(wheelFR.rpm) * wheelFR.radius;
 
+      // calculate Torque to apply based on the current speed and the desired speed from the last command
+      wheelFL.motorTorque = getTorque(wheelCurrentSpeed[0], wheelDesiredSpeed[0]);
+      wheelFR.motorTorque = getTorque(wheelCurrentSpeed[1], wheelDesiredSpeed[1]);
+      wheelFL.brakeTorque = 0.0f;
+      wheelFR.brakeTorque = 0.0f;
+    }
     
   }
 
@@ -196,7 +232,8 @@ public class UnityDifferentialBaseSimulation : MonoBehaviour {
     return rpm * 2 * Mathf.PI / 60;
   }
 
-  /// <summary>
+
+/// <summary>
   /// Limits the absolute of x by the given maximum.
   /// </summary>
   static float Limit(float x, float max) {
@@ -204,7 +241,7 @@ public class UnityDifferentialBaseSimulation : MonoBehaviour {
   }
 
   /// <summary>
-  /// Applies the `Limit` function component-wise
+  /// Applies the Limit function component-wise
   /// </summary>
   static Vector2 Limit(Vector2 x, Vector2 max) {
     return new Vector2(Limit(x[0], max[0]), Limit(x[1], max[1]));
@@ -223,4 +260,3 @@ public class UnityDifferentialBaseSimulation : MonoBehaviour {
 }
 
 }  // namespace Isaac
-
