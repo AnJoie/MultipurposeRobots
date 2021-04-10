@@ -9,6 +9,7 @@ distribution of this software and related documentation without an express
 license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 using System;
+using System.IO;
 using UnityEngine;
 
 namespace Isaac {
@@ -103,8 +104,22 @@ public class UnityDifferentialBaseSimulation : MonoBehaviour {
 
   const float radToDeg = 57.2958f;
 
+  string path1;
+  string path2;
+
+  int second = 0;
   void Start() {
-    
+    path1 = @"C:\Users\ROYAL COMPUTERA\Desktop\1\speedM32.txt";
+    if (File.Exists(path1))
+    {
+      File.Delete(path1);
+    }
+    path2 = @"C:\Users\ROYAL COMPUTERA\Desktop\1\angularM32.txt";
+    if (File.Exists(path2))
+    {
+      File.Delete(path2);
+    }
+   
     commandedSpeed = Vector2.zero;
     lastSpeed = Vector2.zero;
     brakeRequested = false;
@@ -123,57 +138,84 @@ public class UnityDifferentialBaseSimulation : MonoBehaviour {
 
 // shift rigidbody center of mass
     body.centerOfMass += centerOfMassShift;
-    // wheelFL.motorTorque = 5;
-    // wheelFR.motorTorque = 5;
+    wheelFL.motorTorque = 3.2f;
+    wheelFR.motorTorque = 2.8f;
+    InvokeRepeating(nameof(LaunchProjectile), 0.0f, 1.0f);
+  }
+
+  private void LaunchProjectile()
+  {
+
+    Vector3 vecForward = body.rotation * Vector3.right;
+    Vector2 measuredSpeed = new Vector2(Vector3.Dot(body.velocity, vecForward), -body.angularVelocity.y);
+
+    using (StreamWriter sw = new StreamWriter(path1, true))
+    {
+      sw.WriteLine($"{measuredSpeed[0]}");
+      // sw.WriteLine(wheelCurrentSpeed[0]);
+      // sw.Write("Motor torque: ");
+      // sw.WriteLine(wheelFL.motorTorque);
+
+    }
+
+    using (StreamWriter sw = new StreamWriter(path2, true))
+    {
+      sw.WriteLine($"{measuredSpeed[1]}");
+      // sw.WriteLine(wheelCurrentSpeed[0]);
+      // sw.Write("Motor torque: ");
+      // sw.WriteLine(wheelFL.motorTorque);
+
+    }
+    second += 1;
   }
 
   void Update() {
     
     // getWheelDesireSpeed(commandedSpeed);
-    float theta_new, k_v, k_h;
-
-    var point_to = GameObject.Find("Cube").transform.position;
-
-    k_v = 0.5f;
-    k_h = 4.0f;
-
-    var point_local = body.transform.InverseTransformPoint(point_to);
+    // float theta_new, k_v, k_h;
     //
-    Debug.Log($"Local point {point_local}");
+    // var point_to = GameObject.Find("Cube").transform.position;
     //
+    // k_v = 0.5f;
+    // k_h = 4.0f;
     //
-    var linear_velocity = (float) (k_v * Math.Sqrt(Math.Pow(point_local.x, 2) + Math.Pow(point_local.z, 2)));
+    // var point_local = body.transform.InverseTransformPoint(point_to);
     // //
-    // // 3rd quater
-    if (point_local.x < 0 && point_local.z < 0)
-    {
-      theta_new = (float) ((Math.Atan(point_local.z / point_local.x)) - Math.PI);
-    }
-    else if (point_local.x < 0)
-    {
-      theta_new = (float) ((Math.Atan(point_local.z / point_local.x)) + Math.PI);
-    }
-    else
-    {
-      theta_new = (float) (Math.Atan(point_local.z / point_local.x));
-    }
-
-    //
-    // // theta_new = (float)(Math.Atan((point_to.y-body.transform.position.y) / (point_to.x-body.transform.position.x)));
-    // Debug.Log($"Angle {theta_new}");
+    // Debug.Log($"Local point {point_local}");
     // //
-    var angular_velocity = k_h * theta_new;
     // //
+    // var linear_velocity = (float) (k_v * Math.Sqrt(Math.Pow(point_local.x, 2) + Math.Pow(point_local.z, 2)));
+    // // //
+    // // // 3rd quater
+    // if (point_local.x < 0 && point_local.z < 0)
+    // {
+    //   theta_new = (float) ((Math.Atan(point_local.z / point_local.x)) - Math.PI);
+    // }
+    // else if (point_local.x < 0)
+    // {
+    //   theta_new = (float) ((Math.Atan(point_local.z / point_local.x)) + Math.PI);
+    // }
+    // else
+    // {
+    //   theta_new = (float) (Math.Atan(point_local.z / point_local.x));
+    // }
     //
-    commandedSpeed = Limit(new Vector2((float) linear_velocity, (float) angular_velocity), maximumSpeed);
-    //
-    Debug.Log($"Commanded speed: {commandedSpeed}");
+    // //
+    // // // theta_new = (float)(Math.Atan((point_to.y-body.transform.position.y) / (point_to.x-body.transform.position.x)));
+    // // Debug.Log($"Angle {theta_new}");
+    // // //
+    // var angular_velocity = k_h * theta_new;
+    // // //
+    // //
+    // commandedSpeed = Limit(new Vector2((float) linear_velocity, (float) angular_velocity), maximumSpeed);
+    // //
+    // Debug.Log($"Commanded speed: {commandedSpeed}");
     // Vector3 vecForward = body.rotation * Vector3.right;
     // Vector2 measuredSpeed = new Vector2(Vector3.Dot(body.velocity, vecForward), -body.angularVelocity.y);
     // //   
     // Debug.Log($"BodyLin:{measuredSpeed[0]}");
     // Debug.Log($"BodyAng:{measuredSpeed[1]}");
-    getWheelDesireSpeed(commandedSpeed);
+    // getWheelDesireSpeed(commandedSpeed);
     
   }
 
@@ -189,10 +231,10 @@ public class UnityDifferentialBaseSimulation : MonoBehaviour {
       wheelCurrentSpeed[1] = AngularSpeedRpmToRad(wheelFR.rpm) * wheelFR.radius;
 
       // calculate Torque to apply based on the current speed and the desired speed from the last command
-      wheelFL.motorTorque = getTorque(wheelCurrentSpeed[0], wheelDesiredSpeed[0]);
-      wheelFR.motorTorque = getTorque(wheelCurrentSpeed[1], wheelDesiredSpeed[1]);
-      wheelFL.brakeTorque = 0.0f;
-      wheelFR.brakeTorque = 0.0f;
+      // wheelFL.motorTorque = getTorque(wheelCurrentSpeed[0], wheelDesiredSpeed[0]);
+      // wheelFR.motorTorque = getTorque(wheelCurrentSpeed[1], wheelDesiredSpeed[1]);
+      // wheelFL.brakeTorque = 0.0f;
+      // wheelFR.brakeTorque = 0.0f;
     }
     
   }
