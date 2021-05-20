@@ -72,3 +72,5 @@ crashlytics-build.properties
 
 .idea
 venv
+.ip
+/Scripts/.ipynb_checkpoints/

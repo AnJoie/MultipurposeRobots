@@ -8,8 +8,8 @@ using UnityEngine;
 public class ScreenShot : MonoBehaviour
 {
     private Camera screenCam;
-    private int resWidth = 1024;
-    private int resHeight = 1024;
+    private int resWidth = 1920;
+    private int resHeight = 1080;
 
     private static object _locker=new object();
 
@@ -52,9 +52,10 @@ public class ScreenShot : MonoBehaviour
    private  Texture2D snapshot;
     void Start()
     {   
+        Debug.Log($"{screenCam.focalLength}");
         var server = new Server(8080,this);
         server.Start();
-        Debug.Log(server.IsRunning);
+        // Debug.Log(server.IsRunning);
         snapshot = new Texture2D(resWidth, resHeight, TextureFormat.RGB24, false);
     }
     
@@ -77,7 +78,7 @@ public class ScreenShot : MonoBehaviour
 
             CurrentScreenshot = snapshot.EncodeToJPG();
             screenCam.gameObject.SetActive(false);
-            Debug.Log($"{RenderTexture.currentTextureMemory}");
+            // Debug.Log($"{RenderTexture.currentTextureMemory}");
             
             
 

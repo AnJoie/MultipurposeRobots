@@ -9,11 +9,20 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 */
 
 using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
+using System.Threading;
 using UnityEngine;
 using MathNet.Numerics.LinearAlgebra;
 using MathNet.Numerics.LinearAlgebra.Double;
+using NUnit.Framework;
 using rtaNetworking.Streaming;
+using UnityEngine.UIElements;
 
 namespace Isaac
 {
@@ -110,39 +119,114 @@ namespace Isaac
 
         const float radToDeg = 57.2958f;
 
-        string path1;
-        string path2;
+        DateTime time;
 
-        int second = 0;
+        string path;
+        string path1;
+        List<Vector3> CoordFile;
+        float second = 0;
+        int i = 0;
 
         private Control _control;
-        
-        
+
+        //Mutexes to access shared data
+        private readonly object _locker = new object();
+        private readonly object _locker_point = new object();
+        float linear_velocity;
+        float angular_velocity;
+
         private ScreenShot screenShoter;
-        
+
+        //angle to cube 
+        private float _theta = 0;
+
+        //distance to cube
+        private float _distanceToCube = 0;
+
+
         string SnapShotName()
         {
             return string.Format("{0}/Snapshots/snap/snap_{1}x{2}_{3}.jpg", Application.dataPath, 256, 256,
                 System.DateTime.Now.ToString("yy-MM-dd_HH-mm-ss"));
         }
 
+        public void Receive()
+        {
+            UdpClient receivingUdpClient = new UdpClient(5555);
+
+            IPEndPoint RemoteIpEndPoint = null;
+
+            while (true)
+            {
+                try
+                {
+                    byte[] receiveBytes = receivingUdpClient.Receive(ref RemoteIpEndPoint);
+
+                    string returnData = Encoding.UTF8.GetString(receiveBytes);
+                    String[] splitted = returnData.Split(new char[] {' '}, StringSplitOptions.RemoveEmptyEntries);
+
+                    if (splitted.Length == 2)
+                    {
+                        float distance, theta;
+                        if (float.TryParse(splitted[0], NumberStyles.Float, CultureInfo.InvariantCulture, out distance) &&
+                            float.TryParse(splitted[1], NumberStyles.Float, CultureInfo.InvariantCulture, out theta))
+                        {
+                            lock (_locker)
+                            {
+                                _theta = theta;
+                                _distanceToCube = distance;
+                            }
+                        }
+                        else
+                        {
+                            Debug.Log($"Cannot parse distance: {splitted[0]} ");
+                            Debug.Log($"Cannot parse theta: {splitted[1]}");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.Log("Exception occured: " + ex.ToString() + "\n  " + ex.Message);
+                }
+            }
+        }
+
         void Start()
         {
             //how to control the robot
-            _control = Control.Matrix;
-         
+            _control = Control.Python;
 
-            
-            path1 = @"C:\Users\ROYAL COMPUTERA\Desktop\1\speedM25.txt";
-            if (File.Exists(path1))
-            {
-                File.Delete(path1);
-            }
 
-            path2 = @"C:\Users\ROYAL COMPUTERA\Desktop\1\angularM25.txt";
-            if (File.Exists(path2))
+            path = @"C:\Users\ROYAL COMPUTERA\Desktop\1\Coord.txt";
+            path1 = @"C:\Users\ROYAL COMPUTERA\Desktop\1\сoordUnity.txt";
+
+            File.Delete(path1);
+
+            time = DateTime.Now;
+            // Debug.Log($"{time}");
+
+
+            using (StreamReader SR = new StreamReader(path, true))
             {
-                File.Delete(path2);
+                string line;
+                CoordFile = new List<Vector3>();
+
+                while ((line = SR.ReadLine()) != null)
+                {
+                    var words = line.Split(' ');
+                    Vector3 v3 = Vector3.zero;
+
+                    v3.x = (float) Convert.ToDouble(words[0]);
+                    v3.y = (float) Convert.ToDouble(words[1]);
+                    v3.z = (float) Convert.ToDouble(words[2]);
+
+                    CoordFile.Add(v3);
+
+
+                    // Debug.Log($"{line}");
+                }
+
+                // Debug.Log($"{CoordFile.Count}");
             }
 
             commandedSpeed = Vector2.zero;
@@ -166,37 +250,78 @@ namespace Isaac
             body.centerOfMass += centerOfMassShift;
             // wheelFL.motorTorque = 2.5f;
             // wheelFR.motorTorque = 2.0f;
-            InvokeRepeating(nameof(LaunchProjectile), 0.0f, 1.0f);
+            InvokeRepeating(nameof(LaunchProjectile), 0.0f, 0.030f);
+
+            //start UdpListener
+            if (_control == Control.Python)
+            {
+                new Thread(Receive).Start();
+            }
         }
 
         private void LaunchProjectile()
         {
+            // Debug.Log($"Launch: {i}");
+            // if (i <= CoordFile.Count-1)
+            // {
+            //
+            //     if (time.AddMilliseconds(CoordFile[i].z) < DateTime.Now)
+            //     {
+            //         var cube = GameObject.Find("Cube");
+            //         cube.transform.position = new Vector3(CoordFile[i].x, 1, CoordFile[i].y);
+            //         
+            //
+            //         Debug.Log($"YES");
+            //         i = i + 1;
+            //         Debug.Log($"Increase: {i}");
+            //     }
+            // }
+            // else
+            // {
+            //     Debug.Log($"Thats All");
+            // }
+
             Vector3 vecForward = body.rotation * Vector3.right;
             Vector2 measuredSpeed = new Vector2(Vector3.Dot(body.velocity, vecForward), -body.angularVelocity.y);
 
+
             using (StreamWriter sw = new StreamWriter(path1, true))
             {
-                sw.WriteLine($"{measuredSpeed[0]}");
+                sw.WriteLine($"{body.transform.position.x} {body.transform.position.y}");
                 // sw.WriteLine(wheelCurrentSpeed[0]);
                 // sw.Write("Motor torque: ");
                 // sw.WriteLine(wheelFL.motorTorque);
             }
 
-            using (StreamWriter sw = new StreamWriter(path2, true))
-            {
-                sw.WriteLine($"{measuredSpeed[1]}");
-                // sw.WriteLine(wheelCurrentSpeed[0]);
-                // sw.Write("Motor torque: ");
-                // sw.WriteLine(wheelFL.motorTorque);
-            }
+            //
+            // using (StreamWriter sw = new StreamWriter(path2, true))
+            // {
+            //     sw.WriteLine($"{measuredSpeed[1]}");
+            //     // sw.WriteLine(wheelCurrentSpeed[0]);
+            //     // sw.Write("Motor torque: ");
+            //     // sw.WriteLine(wheelFL.motorTorque);
+            // }
 
-            second += 1;
+            // var cube = GameObject.Find("Cube");
+            // using (StreamWriter sw = new StreamWriter(path, true))
+            // {
+            //     string s = $"{cube.transform.position.x} {cube.transform.position.z} {second}";
+            //         sw.WriteLine($"{s}");
+            //         // sw.WriteLine(wheelCurrentSpeed[0]);
+            //         // sw.Write("Motor torque: ");
+            //         // sw.WriteLine(wheelFL.motorTorque);
+            //     }
+
+            // Debug.Log($"Linear{measuredSpeed[1]}");
+
+            second = second + 0.001f;
         }
 
         private void controlWithMatrix()
         {
-            
             Vector3 vecForward = body.rotation * Vector3.right;
+
+            Vector2 measuredSpeed = new Vector2(Vector3.Dot(body.velocity, vecForward), -body.angularVelocity.y);
 
             var cube = GameObject.Find("Cube");
 
@@ -217,9 +342,7 @@ namespace Isaac
                 theta_new = (float) (Math.Atan(cubeLocal.z / cubeLocal.x));
             }
 
-            Vector2 measuredSpeed = new Vector2(Vector3.Dot(body.velocity, vecForward), -body.angularVelocity.y);
 
-            
             Matrix<double> v = DenseMatrix.OfArray(new double[,]
             {
                 {measuredSpeed[0]}, //linear
@@ -259,23 +382,23 @@ namespace Isaac
 
             double linear_velocity = u[0, 0];
             double angular_velocity = u[1, 0];
-            
+
+
             commandedSpeed = Limit(new Vector2((float) linear_velocity, (float) angular_velocity), maximumSpeed);
             //
-
+            Debug.Log($"{Math.Sqrt(Math.Pow(cubeLocal.x,2)+Math.Pow(cubeLocal.z,2))}");
             getWheelDesireSpeed(commandedSpeed);
-
         }
 
         void controlWithNoMatrix()
         {
             float theta_new, k_v, k_h;
-            
+
             var point_to = GameObject.Find("Cube").transform.position;
-            
+
             k_v = 0.5f;
             k_h = 4.0f;
-            
+
             var point_local = body.transform.InverseTransformPoint(point_to);
             //
             //
@@ -284,30 +407,61 @@ namespace Isaac
             // // 3rd quater
             if (point_local.x < 0 && point_local.z < 0)
             {
-              theta_new = (float) ((Math.Atan(point_local.z / point_local.x)) - Math.PI);
+                theta_new = (float) ((Math.Atan(point_local.z / point_local.x)) - Math.PI);
             }
             else if (point_local.x < 0)
             {
-              theta_new = (float) ((Math.Atan(point_local.z / point_local.x)) + Math.PI);
+                theta_new = (float) ((Math.Atan(point_local.z / point_local.x)) + Math.PI);
             }
             else
             {
-              theta_new = (float) (Math.Atan(point_local.z / point_local.x));
+                theta_new = (float) (Math.Atan(point_local.z / point_local.x));
             }
-            
-            
+
+
             var angular_velocity = k_h * theta_new;
             // //
             //
             commandedSpeed = Limit(new Vector2((float) linear_velocity, (float) angular_velocity), maximumSpeed);
             //
-            
+
+            getWheelDesireSpeed(commandedSpeed);
+        }
+
+        void controlWithPython()
+        {
+            float theta_new;
+            float distance_new;
+            lock (_locker)
+            {
+                theta_new = _theta;
+                distance_new = _distanceToCube;
+            }
+
+
+            // float k_v = 0.5f;
+            // float k_h = 4.0f;
+            //
+            // //
+            // //
+            // var linear_velocity = (float) (k_v * distance_new);
+            // // //
+            //
+            //
+            // var angular_velocity = k_h * theta_new;
+            // //
+            //
+            commandedSpeed = Limit(new Vector2((float) distance_new, (float) theta_new), maximumSpeed);
+            //
+
             getWheelDesireSpeed(commandedSpeed);
         }
 
         enum Control
         {
-            Matrix, NoMatrix
+            Matrix,
+            NoMatrix,
+            Python
         }
 
         void Update()
@@ -320,11 +474,12 @@ namespace Isaac
                 case Control.NoMatrix:
                     controlWithNoMatrix();
                     break;
+                case Control.Python:
+                    controlWithPython();
+                    break;
             }
-            
+
             // //make screenshot
-          
-            
         }
 
         void FixedUpdate()

@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System;
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -46,7 +47,15 @@ namespace Isaac
             while (true)
             {
                 // Принимаем новых клиентов
-                new Client(Listener.AcceptTcpClient(),_imgSource);
+                try
+                {
+                    new Client(Listener.AcceptTcpClient(),_imgSource);
+                }
+                catch (Exception e)
+                {
+                    Debug.Log(e);
+                }
+                
             }
         }
         
@@ -106,27 +115,39 @@ namespace Isaac
             Client.GetStream().Write(Buffer,  offset, Buffer.Length);
             Client.GetStream().Flush();
             // offset = Buffer.Length;
-            while (true)
+            try
             {
-                StringBuilder sb = new StringBuilder();
-                var img = imageSource.CurrentScreenshot;
-                
-                sb.AppendLine();
-                sb.AppendLine("--boundary");
-                sb.AppendLine("Content-Type: image/jpeg");
-                sb.AppendLine("Content-Length: " + img.Length);
-                sb.AppendLine();
-                byte[] data = Encoding.ASCII.GetBytes(sb.ToString());
-                Client.GetStream().Write(data,0,data.Length);
-                Client.GetStream().Flush();
-                Client.GetStream().Write(img,0,img.Length); 
-                
-                data = Encoding.ASCII.GetBytes("\r\n");
-                Client.GetStream().Write(data,0,data.Length);
-                Client.GetStream().Flush();
+                while (true)
+                {
+                    StringBuilder sb = new StringBuilder();
+                    var img = imageSource.CurrentScreenshot;
+
+                    sb.AppendLine();
+                    sb.AppendLine("--boundary");
+                    sb.AppendLine("Content-Type: image/jpeg");
+                    sb.AppendLine("Content-Length: " + img.Length);
+                    sb.AppendLine();
+                    byte[] data = Encoding.ASCII.GetBytes(sb.ToString());
+                    Client.GetStream().Write(data, 0, data.Length);
+                    Client.GetStream().Flush();
+                    Client.GetStream().Write(img, 0, img.Length);
+
+                    data = Encoding.ASCII.GetBytes("\r\n");
+                    Client.GetStream().Write(data, 0, data.Length);
+                    Client.GetStream().Flush();
+                    Thread.Sleep(30);
+                }
             }
-            // Закроем соединение
-            Client.Close();
+
+            catch(SocketException ex)
+            {
+                 Client.Close();
+            }
+            finally
+            {
+                Client.Close();    
+            }
+            
         }
     }
 }

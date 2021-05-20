@@ -45,7 +45,7 @@ namespace rtaNetworking.Streaming
 
         public void WriteHeader()
         {
-            Debug.Log("WriteHeader");
+            // Debug.Log("WriteHeader");
             Write( 
                     "HTTP/1.1 200 OK\r\n" +
                     "Content-Type: multipart/x-mixed-replace; boundary=" +
