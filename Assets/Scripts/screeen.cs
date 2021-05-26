@@ -13,7 +13,7 @@ public class screeen : MonoBehaviour
         // if (Input.GetKeyDown(KeyCode.Space))
         // {
             snapCam.CallTakeScreenShot();
-            // }
+        // }
 
        
         

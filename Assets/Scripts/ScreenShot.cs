@@ -77,8 +77,13 @@ public class ScreenShot : MonoBehaviour
             snapshot.ReadPixels(new Rect(0,0,resWidth,resHeight),0,0);
 
             CurrentScreenshot = snapshot.EncodeToJPG();
-            screenCam.gameObject.SetActive(false);
+            // string fileName = SnapShotName();
+            //
             // Debug.Log($"{RenderTexture.currentTextureMemory}");
+            //
+            // System.IO.File.WriteAllBytes(fileName,CurrentScreenshot);
+            
+            screenCam.gameObject.SetActive(false);
             
             
 
@@ -89,8 +94,8 @@ public class ScreenShot : MonoBehaviour
 
     // string SnapShotName()
     // {
-    //     return string.Format("{0}/Snapshots/snap/snap_{1}x{2}_{3}.jpg", Application.dataPath, 256, 256,
+    //     return string.Format("{0}/Snapshots/snap/snap_{1}x{2}_{3}.jpg", Application.dataPath, 1920, 1080,
     //         System.DateTime.Now.ToString("yy-MM-dd_HH-mm-ss"));
     // }
-    
+    //
 }

@@ -134,7 +134,19 @@ namespace Isaac
         private readonly object _locker_point = new object();
         float linear_velocity;
         float angular_velocity;
-
+        float k_v = -0.36f;
+        float k_h = -0.41f;
+        Matrix<double> Kv = DenseMatrix.OfArray(new double[,]
+        {
+            {20, 0},
+            {0, 20}
+        });
+        Matrix<double> Kp = DenseMatrix.OfArray(new double[,]
+        {
+            {18, 0, 0},
+            {0, 18, 0},
+            {0, 0, 18}
+        });
         private ScreenShot screenShoter;
 
         //angle to cube 
@@ -194,40 +206,47 @@ namespace Isaac
         void Start()
         {
             //how to control the robot
-            _control = Control.Python;
-
-
-            path = @"C:\Users\ROYAL COMPUTERA\Desktop\1\Coord.txt";
-            path1 = @"C:\Users\ROYAL COMPUTERA\Desktop\1\сoordUnity.txt";
+            _control = Control.Matrix;
+            
+            path = @"C:\Users\ROYAL COMPUTERA\Desktop\Experiments\traectory_goal.txt";
+            path1 = $@"C:\Users\ROYAL COMPUTERA\Desktop\Experiments\{_control.ToString("G")}_{Kv[0,0]}_{Kv[1,1]}_{Kp[0,0]}_{Kp[1,1]}_{Kp[2,2]}.csv";
 
             File.Delete(path1);
+            // File.Delete(path);
 
             time = DateTime.Now;
             // Debug.Log($"{time}");
 
-
-            using (StreamReader SR = new StreamReader(path, true))
-            {
-                string line;
-                CoordFile = new List<Vector3>();
-
-                while ((line = SR.ReadLine()) != null)
-                {
-                    var words = line.Split(' ');
-                    Vector3 v3 = Vector3.zero;
-
-                    v3.x = (float) Convert.ToDouble(words[0]);
-                    v3.y = (float) Convert.ToDouble(words[1]);
-                    v3.z = (float) Convert.ToDouble(words[2]);
-
-                    CoordFile.Add(v3);
-
-
-                    // Debug.Log($"{line}");
-                }
-
-                // Debug.Log($"{CoordFile.Count}");
-            }
+            // Read from file for control
+            
+             using (StreamReader SR = new StreamReader(path, true))
+             {
+                 string line;
+                 CoordFile = new List<Vector3>();
+             
+                 while ((line = SR.ReadLine()) != null)
+                 {
+                     var words = line.Split(' ');
+                     Vector3 v3 = Vector3.zero;
+             
+                     v3.x = (float) Convert.ToDouble(words[0]);
+                     v3.y = (float) Convert.ToDouble(words[1]);
+                     v3.z = (float) Convert.ToDouble(words[2]);
+             
+                     CoordFile.Add(v3);
+             
+             
+                     // Debug.Log($"{line}");
+                 }
+                 using (StreamWriter sw = new StreamWriter(path1, true))
+                 {
+                     sw.WriteLine($"x y time");
+                     // sw.WriteLine(wheelCurrentSpeed[0]);
+                     // sw.Write("Motor torque: ");
+                     // sw.WriteLine(wheelFL.motorTorque);
+                 }
+                 // Debug.Log($"{CoordFile.Count}");
+             }
 
             commandedSpeed = Vector2.zero;
             lastSpeed = Vector2.zero;
@@ -250,7 +269,7 @@ namespace Isaac
             body.centerOfMass += centerOfMassShift;
             // wheelFL.motorTorque = 2.5f;
             // wheelFR.motorTorque = 2.0f;
-            InvokeRepeating(nameof(LaunchProjectile), 0.0f, 0.030f);
+            InvokeRepeating(nameof(LaunchProjectile), 0.0f, 0.001f);
 
             //start UdpListener
             if (_control == Control.Python)
@@ -261,33 +280,35 @@ namespace Isaac
 
         private void LaunchProjectile()
         {
-            // Debug.Log($"Launch: {i}");
-            // if (i <= CoordFile.Count-1)
-            // {
+            // // Control from file
             //
-            //     if (time.AddMilliseconds(CoordFile[i].z) < DateTime.Now)
-            //     {
-            //         var cube = GameObject.Find("Cube");
-            //         cube.transform.position = new Vector3(CoordFile[i].x, 1, CoordFile[i].y);
-            //         
-            //
-            //         Debug.Log($"YES");
-            //         i = i + 1;
-            //         Debug.Log($"Increase: {i}");
-            //     }
-            // }
-            // else
-            // {
-            //     Debug.Log($"Thats All");
-            // }
+            Debug.Log($"Launch: {i}");
+            if (i <= CoordFile.Count-1)
+            {
+            
+                if (time.AddMilliseconds(CoordFile[i].z) < DateTime.Now)
+                {
+                    var cube = GameObject.Find("Cube");
+                    cube.transform.position = new Vector3(CoordFile[i].x, 1, CoordFile[i].y);
+                    
+            
+                    // Debug.Log($"YES");
+                    i = i + 1;
+                    // Debug.Log($"Increase: {i}");
+                }
+            }
+            else
+            {
+                // Debug.Log($"Thats All");
+            }
 
             Vector3 vecForward = body.rotation * Vector3.right;
             Vector2 measuredSpeed = new Vector2(Vector3.Dot(body.velocity, vecForward), -body.angularVelocity.y);
-
-
+            
+            
             using (StreamWriter sw = new StreamWriter(path1, true))
             {
-                sw.WriteLine($"{body.transform.position.x} {body.transform.position.y}");
+                sw.WriteLine($"{body.transform.position.x} {body.transform.position.z} {second}");
                 // sw.WriteLine(wheelCurrentSpeed[0]);
                 // sw.Write("Motor torque: ");
                 // sw.WriteLine(wheelFL.motorTorque);
@@ -311,7 +332,7 @@ namespace Isaac
             //         // sw.Write("Motor torque: ");
             //         // sw.WriteLine(wheelFL.motorTorque);
             //     }
-
+            //
             // Debug.Log($"Linear{measuredSpeed[1]}");
 
             second = second + 0.001f;
@@ -348,17 +369,7 @@ namespace Isaac
                 {measuredSpeed[0]}, //linear
                 {measuredSpeed[1]}
             }); //angular
-            Matrix<double> Kv = DenseMatrix.OfArray(new double[,]
-            {
-                {1, 0},
-                {0, 1}
-            });
-            Matrix<double> Kp = DenseMatrix.OfArray(new double[,]
-            {
-                {1, 0, 0},
-                {0, 1, 0},
-                {0, 0, 1}
-            });
+           
 
 
             Matrix<double> R = DenseMatrix.OfArray(new double[,]
@@ -380,24 +391,27 @@ namespace Isaac
 
             u = (-1.0) * Kv * v - R * Kp * (-xd);
 
-            double linear_velocity = u[0, 0];
-            double angular_velocity = u[1, 0];
+            double motor_r = u[0, 0];
+            double motor_l = u[1, 0];
 
 
-            commandedSpeed = Limit(new Vector2((float) linear_velocity, (float) angular_velocity), maximumSpeed);
-            //
-            Debug.Log($"{Math.Sqrt(Math.Pow(cubeLocal.x,2)+Math.Pow(cubeLocal.z,2))}");
-            getWheelDesireSpeed(commandedSpeed);
+            // commandedSpeed = Limit(new Vector2((float) linear_velocity, (float) angular_velocity), maximumSpeed);
+            // //
+            // // Debug.Log($"{Math.Sqrt(Math.Pow(cubeLocal.x,2)+Math.Pow(cubeLocal.z,2))}");
+            // getWheelDesireSpeed(commandedSpeed);
+            
+            wheelFL.motorTorque = (float)motor_r;
+            wheelFR.motorTorque = (float)motor_l;
+            
         }
 
         void controlWithNoMatrix()
         {
-            float theta_new, k_v, k_h;
+            float theta_new;
 
             var point_to = GameObject.Find("Cube").transform.position;
 
-            k_v = 0.5f;
-            k_h = 4.0f;
+            
 
             var point_local = body.transform.InverseTransformPoint(point_to);
             //
@@ -437,7 +451,7 @@ namespace Isaac
                 theta_new = _theta;
                 distance_new = _distanceToCube;
             }
-
+            
 
             // float k_v = 0.5f;
             // float k_h = 4.0f;
@@ -457,11 +471,17 @@ namespace Isaac
             getWheelDesireSpeed(commandedSpeed);
         }
 
+        void controlWithFile()
+        {
+            
+        }
+
         enum Control
         {
             Matrix,
             NoMatrix,
-            Python
+            Python,
+            Idle
         }
 
         void Update()
@@ -477,6 +497,9 @@ namespace Isaac
                 case Control.Python:
                     controlWithPython();
                     break;
+                case Control.Idle:
+                    break;
+                
             }
 
             // //make screenshot
@@ -497,11 +520,12 @@ namespace Isaac
                 wheelCurrentSpeed[0] = AngularSpeedRpmToRad(wheelFL.rpm) * wheelFL.radius;
                 wheelCurrentSpeed[1] = AngularSpeedRpmToRad(wheelFR.rpm) * wheelFR.radius;
 
-                // calculate Torque to apply based on the current speed and the desired speed from the last command
-                wheelFL.motorTorque = getTorque(wheelCurrentSpeed[0], wheelDesiredSpeed[0]);
-                wheelFR.motorTorque = getTorque(wheelCurrentSpeed[1], wheelDesiredSpeed[1]);
-                wheelFL.brakeTorque = 0.0f;
-                wheelFR.brakeTorque = 0.0f;
+                // comment when control from motor torque
+                // // calculate Torque to apply based on the current speed and the desired speed from the last command
+                // wheelFL.motorTorque = getTorque(wheelCurrentSpeed[0], wheelDesiredSpeed[0]);
+                // wheelFR.motorTorque = getTorque(wheelCurrentSpeed[1], wheelDesiredSpeed[1]);
+                // wheelFL.brakeTorque = 0.0f;
+                // wheelFR.brakeTorque = 0.0f;
             }
         }
 
