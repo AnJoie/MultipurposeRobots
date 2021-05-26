@@ -1,4 +1,4 @@
-﻿##Project for multi-purpose robot control
+﻿## Project for multi-purpose robot control
 
 A project for mobile robot control, a robot pursues the cube which could be controlled by mouse cursor, simply start the appropriate scene in Uniti project and enjoy.
 
@@ -10,7 +10,7 @@ Each option should be **in advance** selected in `Start()` method of `Assets/Scr
 - Two self-contained methods in Unity, could be found in `Assets/Scripts/UnityDifferentialBaseSimulation.cs`
 
 
-###Dependencies
+### Dependencies
 
 ---
 - Unity3D (with maybe NuGet plugin)
